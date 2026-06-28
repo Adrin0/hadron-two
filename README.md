@@ -1,13 +1,38 @@
-# hadron-two
+# hadron-two — Self-Hosted AI Infrastructure
 
-So... I overengineered hadron-one and basically got sucked into the wormhole. I've simplified the design to be managed by terminal and utilize natively installed networking components on proxmox. VLANs are still being decided on, ELK will be used for endpoint monitoring, firewall will isolate sandbox. Wireguard is on the host as well. 
+![Status](https://img.shields.io/badge/status-active-brightgreen)
+![Platform](https://img.shields.io/badge/platform-Proxmox%20VE-E57000)
+![GPU](https://img.shields.io/badge/GPU-RTX%202060%20SUPER-76B900?logo=nvidia)
 
-hadron-two is the new proxmox platform to self-host my ai projects.
+A Proxmox-based home server running GPU-accelerated LLM inference and AI workflow automation. Designed to be terminal-managed, private-first, and modular — built as a leaner successor to an earlier overengineered iteration.
 
+## Stack
 
-superpower plugin: /plugin install superpowers@claude-plugins-official
-ollama ui: http://<container-LAN-IP>:11434
-proxmox ui: https://192.168.1.32:8006
-openui: http://192.168.1.46:3000
-n8n: http://192.168.1.47:5678
-claude --resume 882b281a-ce3b-4b75-a0ec-7b1236d3bab3
+| Service      | Container | Port  | Status     |
+|--------------|-----------|-------|------------|
+| Ollama       | LXC 100   | 11434 | Running    |
+| Open WebUI   | LXC 101   | 3000  | Running    |
+| n8n          | LXC 102   | 5678  | Running    |
+| Qdrant       | LXC 103   | 6333  | Planned    |
+
+**Hardware:** Ryzen 8-core, 47 GB RAM, RTX 2060 SUPER (8 GB VRAM)
+
+## Access
+
+Remote access is provided via WireGuard VPN (`10.10.0.0/24`). All services are reachable through the tunnel — nothing is exposed to the public internet.
+
+## Networking
+
+Managed natively on Proxmox VE. WireGuard runs on the host. VLANs are under evaluation. A sandboxed firewall zone isolates experimental workloads from the main LAN.
+
+## Monitoring
+
+ELK Stack integration is planned for endpoint and container log aggregation, building on the patterns established in [soc-lab](https://github.com/adrin0/soc-lab).
+
+## Roadmap
+
+See [ai-stack-ideas.md](ai-stack-ideas.md) for a tiered breakdown of planned projects — from n8n workflow automation and RAG pipelines to agentic research and local fine-tuning.
+
+## Related
+
+- [soc-lab](https://github.com/adrin0/soc-lab) — the predecessor security monitoring lab; ELK patterns here build on that foundation.
