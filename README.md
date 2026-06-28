@@ -2,7 +2,7 @@
 
 A Proxmox-based self-hosted AI platform for running local LLM workloads and building AI projects.
 
-hadron-two is the second iteration of my home AI infrastructure. Simplified from hadron-one and home-soc to be terminal-managed and use Proxmox's native networking components.
+hadron-two is the second iteration of my home AI infrastructure. Simplified from hadron-one and soc-lab to be terminal-managed and use Proxmox's native networking components.
 
 ## Stack
 
