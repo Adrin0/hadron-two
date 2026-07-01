@@ -6,7 +6,8 @@
 2. [Features](#features)
 3. [Architecture](#architecture)
 4. [Quick Start](#quick-start)
-5. [Installation and Setup](#installation-and-setup)
+5. [Remote Access — WireGuard VPN](#remote-access--wireguard-vpn)
+6. [Installation and Setup](#installation-and-setup)
    - [Prerequisites](#prerequisites)
    - [Step 1: Bootstrap the Host](#step-1-bootstrap-the-host)
    - [Step 2: Create LXC Containers](#step-2-create-lxc-containers)
@@ -14,9 +15,9 @@
    - [Step 4: Set Up DVWA](#step-4-set-up-dvwa)
    - [Step 5: Configure Beats](#step-5-configure-beats)
    - [Step 6: Configure Kibana Dashboards](#step-6-configure-kibana-dashboards)
-6. [Attack Scenarios](#attack-scenarios)
-7. [AI-Enhanced Alerting](#ai-enhanced-alerting)
-8. [Docs](#docs)
+7. [Attack Scenarios](#attack-scenarios)
+8. [AI-Enhanced Alerting](#ai-enhanced-alerting)
+9. [Docs](#docs)
 
 ---
 
@@ -117,6 +118,92 @@ source /etc/environment
 claude
 ```
 
+Then harden the host (requires your SSH public key to be in `/root/.ssh/authorized_keys` first):
+
+```bash
+bash harden.sh
+```
+
+---
+
+## Remote Access — WireGuard VPN
+
+WireGuard is the recommended remote access method for hadron-two. It is self-hosted, has a minimal attack surface, and gives full access to the `10.10.0.0/24` LXC subnet once connected — no third-party relay required. Port 51820/udp is already opened by `harden.sh`.
+
+### Prerequisites
+
+1. **Router port forward** — forward UDP port `51820` to your Proxmox host's LAN IP in your router's admin UI. This is the one step that cannot be automated.
+2. **DuckDNS account** (if your home IP is dynamic) — sign up at [duckdns.org](https://www.duckdns.org), create a subdomain, and grab your token. The setup script handles the rest.
+
+### Setup
+
+Run on the Proxmox host as root:
+
+```bash
+bash wireguard-setup.sh
+```
+
+The script:
+- Installs WireGuard
+- Generates server and first client keypairs
+- Writes `/etc/wireguard/wg0.conf` with NAT rules so VPN clients reach all LXC containers
+- Optionally configures DuckDNS with a cron job that updates your public IP every 5 minutes
+- Prints the complete client config block ready to paste into the WireGuard app
+
+At the end, **copy the printed client config to your device immediately**, then delete the private key from the server:
+
+```bash
+rm /etc/wireguard/client.key
+```
+
+### Client Config (example)
+
+```ini
+[Interface]
+Address    = 10.10.0.2/32
+PrivateKey = <client-private-key>
+DNS        = 1.1.1.1
+
+[Peer]
+PublicKey           = <server-public-key>
+Endpoint            = yourhome.duckdns.org:51820
+AllowedIPs          = 10.10.0.0/24
+PersistentKeepalive = 25
+```
+
+`AllowedIPs = 10.10.0.0/24` uses split-tunnel mode — only traffic destined for the lab subnet routes through the VPN. Your regular internet traffic is unaffected.
+
+### Adding More Clients
+
+For each additional device, generate a new keypair and add the peer to the server:
+
+```bash
+# On the Proxmox host
+CLIENT2_PRIVKEY=$(wg genkey)
+CLIENT2_PUBKEY=$(echo "$CLIENT2_PRIVKEY" | wg pubkey)
+
+# Add peer to the running interface
+wg set wg0 peer "$CLIENT2_PUBKEY" allowed-ips 10.10.0.3/32
+
+# Persist to wg0.conf
+wg-quick save wg0
+```
+
+Assign each new client the next IP in the subnet (`10.10.0.3`, `10.10.0.4`, etc.).
+
+### Verify
+
+```bash
+# On the Proxmox host
+wg show
+
+# From the client device (after connecting)
+ping 10.10.0.1          # Proxmox host VPN IP
+# Then open in browser:
+# http://10.10.0.1:8006  — Proxmox web UI
+# http://<LXC101_IP>:3000 — Open WebUI
+```
+
 ---
 
 ## Installation and Setup
@@ -125,7 +212,7 @@ claude
 
 - **Proxmox VE 8.x** installed on the bare-metal host
 - **Git** (installed by `bootstrap.sh` if missing)
-- **WireGuard** configured on the Proxmox host for remote access (optional)
+- **WireGuard VPN** — run `bash wireguard-setup.sh` and forward UDP 51820 on your router; see [Remote Access](#remote-access--wireguard-vpn)
 - An **Anthropic API key** for Claude Code (prompted during `bootstrap.sh`)
 
 ### Step 1: Bootstrap the Host
@@ -327,5 +414,7 @@ See [soc/docs/architecture.md](soc/docs/architecture.md) for the full pipeline d
 | [soc/docs/lxc-setup.md](soc/docs/lxc-setup.md) | General Proxmox LXC create/start/access reference |
 | [soc/docs/screenshot-deliverables.md](soc/docs/screenshot-deliverables.md) | Milestone screenshot checklist |
 | [deliverable.md](deliverable.md) | Progress report — what's built and how it compares to soc-lab |
+| [harden.sh](harden.sh) | Proxmox host hardening — firewall, SSH, fail2ban, sysctl |
+| [wireguard-setup.sh](wireguard-setup.sh) | WireGuard VPN install, key generation, DuckDNS DDNS |
 | [ai-stack-ideas.md](ai-stack-ideas.md) | Project ideas for the AI stack |
 | [llm-notes.md](llm-notes.md) | LLM provider comparisons |
