@@ -31,8 +31,12 @@ systemctl enable --now docker
 echo "Cloning repository..."
 git clone $REPO_URL /tmp/hadron-two
 mkdir -p $INSTALL_DIR
-cp /tmp/hadron-two/security/ELK/docker-compose.yml $INSTALL_DIR/
-cp /tmp/hadron-two/security/ELK/logstash.conf $INSTALL_DIR/
+cp /tmp/hadron-two/soc/ELK/docker-compose.yml $INSTALL_DIR/
+cp /tmp/hadron-two/soc/ELK/logstash.conf $INSTALL_DIR/
+
+echo "Setting vm.max_map_count for Elasticsearch..."
+sysctl -w vm.max_map_count=262144
+echo "vm.max_map_count=262144" >> /etc/sysctl.conf
 
 echo "Starting ELK stack..."
 cd $INSTALL_DIR
